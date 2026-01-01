@@ -2,6 +2,8 @@
 #include "Frame.h"
 #include "LedMatrixConst.h"
 #include "main.h"
+#include "portmacro.h"
+#include <string.h>
 
 static LedMatrix _singleton;
 
@@ -21,7 +23,10 @@ static inline void LED_start_display(){
 // @brief delays adequate amount to implement Binary Code Modulation coloring
 static inline void BCM_weight(uint8_t bit_delay){
     // vTaskDelay(bit_delay);
+    // portENTER_CRITICAL();
+    // taskENTER_CRITICAL();
     delay_ticks(bit_delay);
+    // portEXIT_CRITICAL();
 }
 
 
@@ -34,6 +39,7 @@ int LedMatrix_Init()
     }
 
     _singleton.FrameData = Frame_Create();
+    _singleton.Buffer = NULL;
 
     return 0;
 }
@@ -44,6 +50,14 @@ void LedMatrix_DisplayFrame()
 
     uint16_t used_pixels_1 = 0;
     uint16_t used_pixels_2 = 0;
+    if(_singleton.Buffer != NULL){
+        memcpy(_singleton.FrameData, _singleton.Buffer, sizeof(uint32_t) * PIXELS * BCM_BIT_DEPTH);
+        Frame_Delete(_singleton.Buffer);
+        _singleton.Buffer = NULL;
+    }
+
+    xSemaphoreGive(_singleton.Mutex);
+
 
     // reset register row and colors value
     GPIOC->BSRR = ((A_Pin|B_Pin|C_Pin|D_Pin|COLOR_PINS) << 16)|OE_Pin;
@@ -81,7 +95,7 @@ void LedMatrix_DisplayFrame()
         }   
     }
 
-    xSemaphoreGive(_singleton.Mutex);
+    
 }
 
 
@@ -92,10 +106,10 @@ void LedMatrix_ChangeFrame(Frame newFrame)
 
     xSemaphoreTake(_singleton.Mutex, portMAX_DELAY);
     
-    if(_singleton.FrameData != NULL)
-        Frame_Delete(_singleton.FrameData);
+    if(_singleton.Buffer != NULL)
+        Frame_Delete(_singleton.Buffer);
 
-    _singleton.FrameData = newFrame;
+    _singleton.Buffer = newFrame;
 
     xSemaphoreGive(_singleton.Mutex);
 }

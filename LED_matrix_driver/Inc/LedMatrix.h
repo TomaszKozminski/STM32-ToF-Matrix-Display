@@ -9,6 +9,7 @@
 typedef struct{
     SemaphoreHandle_t Mutex;
     Frame FrameData;
+    Frame Buffer;
 }LedMatrix;
 
 int LedMatrix_Init();

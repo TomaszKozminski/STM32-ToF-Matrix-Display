@@ -1,11 +1,11 @@
 #ifndef _LED_MATRIX_CANVAS_H
 #define _LED_MATRIX_CANVAS_H
 
-#include "LedMatrixConst.h"
 #include "Frame.h"
 #include "Font.h"
 #include "cmsis_os.h"
 #include "Colors.h"
+#include "Image.h"
 
 typedef enum{
     RIGHT,
@@ -22,16 +22,18 @@ typedef enum{
 
 
 typedef struct{
-    
     SemaphoreHandle_t Mutex;
     uint16_t ** RGB_data;
 }Canvas;
 
-int Canvas_Create(Canvas * self);
+int  Canvas_Create(Canvas * self);
 void Canvas_Reset(Canvas * self);
 void Canvas_Destroy(Canvas * self);
 
-int Canvas_TextLine(Canvas * self, FONT_TYPE font, TEXT_LINE line, const char * text, int16_t pixel_shift, COLOR color);
+
+int Canvas_PutImage(Canvas * self, Image * newImage);
+int Canvas_PutTextLine(Canvas * self, FONT_TYPE font, TEXT_LINE line, const char * text, int16_t pixel_shift, COLOR color);
+
 
 Frame Canvas_GenerateFrame(Canvas * self);
 

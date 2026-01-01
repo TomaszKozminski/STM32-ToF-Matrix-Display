@@ -3,7 +3,6 @@
 
 
 #include <inttypes.h>
-#include "LedMatrixConst.h"
 
 typedef uint32_t * Frame;
 

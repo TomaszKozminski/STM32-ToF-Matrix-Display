@@ -1,5 +1,5 @@
 #include "Frame.h"
-
+#include "LedMatrixConst.h"
 
 Frame Frame_Create(void)
 {

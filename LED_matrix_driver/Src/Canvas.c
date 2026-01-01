@@ -3,7 +3,7 @@
 #include "cmsis_os.h"
 #include "main.h"
 #include <string.h>
-
+#include "LedMatrixConst.h"
 
 static const uint16_t ROW_SELECT_PINS[4] = {A_Pin, B_Pin, C_Pin, D_Pin};
 // @brief returns pins bitmask in BSRR to set passed row
@@ -12,7 +12,8 @@ static const uint16_t ROW_SELECT_PINS[4] = {A_Pin, B_Pin, C_Pin, D_Pin};
  *                              STATIC FUNCTIONS
  * *********************************************************************************/
 
-static uint16_t Canvas_SelectRow(uint8_t row){
+static uint16_t Canvas_SelectRow(uint8_t row)
+{
     uint16_t row_set_bits = 0;
 
     for(int i = 0; i < 4; ++i) {
@@ -21,7 +22,6 @@ static uint16_t Canvas_SelectRow(uint8_t row){
     }
     return row_set_bits;
 }
-
 
 static int Canvas_TextPositiveShift(Canvas * self, FONT_TYPE font, TEXT_LINE text_lane, const char * text, int16_t pixel_shift, COLOR color)
 {
@@ -163,7 +163,33 @@ static int Canvas_TextNegativeShift(Canvas * self, FONT_TYPE font, TEXT_LINE tex
     return 0;
 }
 
+static void Canvas_PutBackground(Canvas * self, Image * newImage){
+    for(int row = 0; row < ROWS; row++)
+    {
+        for(int column = 0; column < COLUMNS; column++)
+        {
+            if(newImage->Background->BackgroundMask[row][column]){
+                self->RGB_data[row][column] = newImage->Background->Color;
+            }else{
+                self->RGB_data[row][column] = BLACK;
+            }
+            
+        }
+    }
+}
 
+static void Canvas_PutMovingItem(Canvas * self, Image * newImage){
+
+
+    for(int row = newImage->MovingItem->OffsetY; row < ROWS; row++)
+    {
+        for(int column = newImage->MovingItem->OffsetX; column < COLUMNS; column++)
+        {
+            if(newImage->MovingItem->ItemMask[row - newImage->MovingItem->OffsetY][column - newImage->MovingItem->OffsetX])
+                self->RGB_data[row][column] = newImage->MovingItem->Color;
+        }
+    }
+}
 /***********************************************************************************
  *                              PUBLIC FUNCTIONS
  * *********************************************************************************/
@@ -174,6 +200,9 @@ int Canvas_Create(Canvas * self)
     if(self == NULL)
         return 1;
 
+    /* ensure predictable initial state in case caller passed uninitialized memory */
+    self->RGB_data = NULL;
+
     self->Mutex = xSemaphoreCreateMutex();
     if(self->Mutex == NULL){
         return 1;
@@ -183,8 +212,22 @@ int Canvas_Create(Canvas * self)
 
     if(self->RGB_data == NULL){
         self->RGB_data = (uint16_t**)malloc(ROWS * sizeof(uint16_t*));
-        for (int x = 0; x < ROWS; x++)
+        if(self->RGB_data == NULL){
+            xSemaphoreGive(self->Mutex);
+            return 1;
+        }
+
+        for (int x = 0; x < ROWS; x++){
             self->RGB_data[x] = (uint16_t*)malloc(COLUMNS * sizeof(uint16_t));
+            if(self->RGB_data[x] == NULL){
+                /* free previously allocated rows */
+                for(int y = 0; y < x; y++) free(self->RGB_data[y]);
+                free(self->RGB_data);
+                self->RGB_data = NULL;
+                xSemaphoreGive(self->Mutex);
+                return 1;
+            }
+        }
     }
 
 
@@ -216,19 +259,28 @@ void Canvas_Reset(Canvas * self)
 
 void Canvas_Destroy(Canvas * self)
 {
-    xSemaphoreTake(self->Mutex, portMAX_DELAY);
+    if(self == NULL)
+        return;
 
-    if((self != NULL) && (self->RGB_data != NULL))
+    if(self->Mutex != NULL)
+        xSemaphoreTake(self->Mutex, portMAX_DELAY);
+
+    if(self->RGB_data != NULL)
     {
         for (int x = 0; x < ROWS; x++)
             free(self->RGB_data[x]);
         free(self->RGB_data);
+        self->RGB_data = NULL;
     }
 
-    xSemaphoreGive(self->Mutex);
+    if(self->Mutex != NULL){
+        xSemaphoreGive(self->Mutex);
+        vSemaphoreDelete(self->Mutex);
+        self->Mutex = NULL;
+    }
 }
 
-int  Canvas_TextLine(Canvas * self, FONT_TYPE font, TEXT_LINE line, const char * text, int16_t pixel_shift, COLOR color)
+int Canvas_PutTextLine(Canvas * self, FONT_TYPE font, TEXT_LINE line, const char * text, int16_t pixel_shift, COLOR color)
 {
     int ret;
     if(pixel_shift >= 0){
@@ -239,6 +291,23 @@ int  Canvas_TextLine(Canvas * self, FONT_TYPE font, TEXT_LINE line, const char *
 
     return ret;
 }
+
+
+int Canvas_PutImage(Canvas * self, Image * newImage)
+{
+    int ret = 0;
+    if(self != NULL && newImage != NULL){
+        
+        
+
+        Canvas_PutBackground(self, newImage);
+        Canvas_PutMovingItem(self, newImage);
+    }
+
+    return ret;
+}
+
+
 
 Frame Canvas_GenerateFrame(Canvas * self)
 {
