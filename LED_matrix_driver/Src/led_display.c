@@ -1,7 +1,7 @@
 #include "led_display.h"
 #include "task.h"
 
-#include "font.h"
+#include "Font.h"
 
 #include <stdint.h>
 #include <string.h>

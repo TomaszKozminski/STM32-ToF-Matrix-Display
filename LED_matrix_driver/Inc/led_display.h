@@ -12,8 +12,8 @@
 #include <stdint.h>
 #include "cmsis_os.h"
 
-#include "font.h"
-#include "colors.h"
+#include "Font.h"
+#include "Colors.h"
 #include <stdbool.h>
 
 #define ADDRESSABLE_ROWS                    32/2

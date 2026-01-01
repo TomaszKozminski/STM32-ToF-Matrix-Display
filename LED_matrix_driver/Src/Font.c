@@ -1,4 +1,4 @@
-#include "font.h"
+#include "Font.h"
 #include <ctype.h>
 #include <stdatomic.h>
 #include <string.h>

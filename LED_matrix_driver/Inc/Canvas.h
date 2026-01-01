@@ -3,9 +3,9 @@
 
 #include "LedMatrixConst.h"
 #include "Frame.h"
-#include "font.h"
+#include "Font.h"
 #include "cmsis_os.h"
-#include "colors.h"
+#include "Colors.h"
 
 typedef enum{
     RIGHT,
