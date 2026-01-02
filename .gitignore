@@ -1,1 +1,5 @@
-dump
+build
+mx.scratch
+!.settings
+.vscode
+.settings
