@@ -4,6 +4,7 @@
 #include "ImageBackground.h"
 #include "ImageMovingItem.h"
 
+// struktura organizująca tło i dynamiczny obiekt w jeden obraz
 typedef struct{
     ImageBackground * Background;
     ImageMovingItem * MovingItem;

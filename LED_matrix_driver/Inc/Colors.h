@@ -1,5 +1,7 @@
-#ifndef _LED_MATRIX_COORS_H
-#define _LED_MATRIX_COORS_H
+#ifndef _LED_MATRIX_COLORS_H
+#define _LED_MATRIX_COLORS_H
+
+// kolory
 
 typedef enum{
     RED     =       0xf00,
@@ -12,4 +14,4 @@ typedef enum{
     BLACK   =       0x000
 }COLOR;
 
-#endif /* _LED_MATRIX_COORS_H */
+#endif /* _LED_MATRIX_COLORS_H */

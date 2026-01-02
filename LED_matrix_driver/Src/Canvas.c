@@ -5,13 +5,24 @@
 #include <string.h>
 #include "LedMatrixConst.h"
 
-static const uint16_t ROW_SELECT_PINS[4] = {A_Pin, B_Pin, C_Pin, D_Pin};
-// @brief returns pins bitmask in BSRR to set passed row
+// użyte wzorce:
+// - object pattern
+// - mutex multithread safety
 
 /***********************************************************************************
- *                              STATIC FUNCTIONS
+ *                              LOCAL CONSTANTS
  * *********************************************************************************/
 
+static const uint16_t ROW_SELECT_PINS[4] = {A_Pin, B_Pin, C_Pin, D_Pin};
+
+/***********************************************************************************
+ *                              PRIVATE METHODS
+ * *********************************************************************************/
+
+ /**
+ * @brief zwraca bitmaske rejestru BSRR dla podanego rzędu
+ * @param row rząd na matrycy
+ */
 static uint16_t Canvas_SelectRow(uint8_t row)
 {
     uint16_t row_set_bits = 0;
@@ -23,7 +34,16 @@ static uint16_t Canvas_SelectRow(uint8_t row)
     return row_set_bits;
 }
 
-static int Canvas_TextPositiveShift(Canvas * self, FONT_TYPE font, TEXT_LINE text_lane, const char * text, int16_t pixel_shift, COLOR color)
+/**
+ * @brief wprowadza tekst z przesnięciem w prawo
+ * @param self wskaźnik na obiekt
+ * @param font czcionka tekstu
+ * @param line linia w której ma powstać tekst
+ * @param text zawartość do wyświetlenia
+ * @param pixel_shift wartość przesunięcia względem lewej krawędzi matrycy
+ * @param color kolor tekstu
+ */
+static int Canvas_TextPositiveShift(Canvas * self, FONT_TYPE font, TEXT_LINE line, const char * text, int16_t pixel_shift, COLOR color)
 {
     xSemaphoreTake(self->Mutex, portMAX_DELAY);
 
@@ -61,7 +81,7 @@ static int Canvas_TextPositiveShift(Canvas * self, FONT_TYPE font, TEXT_LINE tex
     for(int x = 0; x < shapeH; x++)
     {   
         skipPixels = pixel_shift % shapeW;
-        currentRow = text_lane + x;
+        currentRow = line + x;
         rowPixelsUsed = 0;
         //y - shape
         for(int y = 0; y < shapeCnt; y++)
@@ -95,7 +115,16 @@ static int Canvas_TextPositiveShift(Canvas * self, FONT_TYPE font, TEXT_LINE tex
     return 0;
 }
 
-static int Canvas_TextNegativeShift(Canvas * self, FONT_TYPE font, TEXT_LINE text_lane, const char * text, int16_t pixel_shift, COLOR color)
+/**
+ * @brief wprowadza tekst z przesnięciem w lewo
+ * @param self wskaźnik na obiekt
+ * @param font czcionka tekstu
+ * @param line linia w której ma powstać tekst
+ * @param text zawartość do wyświetlenia
+ * @param pixel_shift wartość przesunięcia względem lewej krawędzi matrycy
+ * @param color kolor tekstu
+ */
+static int Canvas_TextNegativeShift(Canvas * self, FONT_TYPE font, TEXT_LINE line, const char * text, int16_t pixel_shift, COLOR color)
 {
     xSemaphoreTake(self->Mutex, portMAX_DELAY);
 
@@ -135,7 +164,7 @@ static int Canvas_TextNegativeShift(Canvas * self, FONT_TYPE font, TEXT_LINE tex
     // x - rząd danych shape'u
     for(int x = 0; x < shapeH; x++)
     {   
-        currentRow = text_lane + x;
+        currentRow = line + x;
         rowPixelsUsed = 0;
         //y - shape
         for(int y = 0; y < shapeCnt; y++)
@@ -163,7 +192,16 @@ static int Canvas_TextNegativeShift(Canvas * self, FONT_TYPE font, TEXT_LINE tex
     return 0;
 }
 
-static void Canvas_PutBackground(Canvas * self, Image * newImage){
+/**
+ * @brief kładzie tło obrazu
+ * @param self wskaźnik na obiekt
+ * @param newImage wzkaźnik na obraz
+ */
+static void Canvas_PutBackground(Canvas * self, Image * newImage)
+{
+
+    xSemaphoreTake(self->Mutex, portMAX_DELAY);
+
     for(int row = 0; row < ROWS; row++)
     {
         for(int column = 0; column < COLUMNS; column++)
@@ -176,10 +214,19 @@ static void Canvas_PutBackground(Canvas * self, Image * newImage){
             
         }
     }
+
+    xSemaphoreGive(self->Mutex);
 }
 
-static void Canvas_PutMovingItem(Canvas * self, Image * newImage){
+/**
+ * @brief kładzie dynamiczny element obrazu
+ * @param self wskaźnik na obiekt
+ * @param newImage wzkaźnik na obraz
+ */
+static void Canvas_PutMovingItem(Canvas * self, Image * newImage)
+{
 
+    xSemaphoreTake(self->Mutex, portMAX_DELAY);
 
     for(int row = newImage->MovingItem->OffsetY; row < ROWS; row++)
     {
@@ -189,12 +236,13 @@ static void Canvas_PutMovingItem(Canvas * self, Image * newImage){
                 self->RGB_data[row][column] = newImage->MovingItem->Color;
         }
     }
+
+    xSemaphoreGive(self->Mutex);
 }
 /***********************************************************************************
- *                              PUBLIC FUNCTIONS
+ *                              PUBLIC METHODS
  * *********************************************************************************/
 
-//TODO dodac zabezpieczenia przy alokacji
 int Canvas_Create(Canvas * self)
 {
     if(self == NULL)
@@ -292,22 +340,20 @@ int Canvas_PutTextLine(Canvas * self, FONT_TYPE font, TEXT_LINE line, const char
     return ret;
 }
 
-
 int Canvas_PutImage(Canvas * self, Image * newImage)
 {
     int ret = 0;
     if(self != NULL && newImage != NULL){
         
-        
+        if(newImage->Background != NULL)
+            Canvas_PutBackground(self, newImage);
 
-        Canvas_PutBackground(self, newImage);
-        Canvas_PutMovingItem(self, newImage);
+        if(newImage->MovingItem != NULL)
+            Canvas_PutMovingItem(self, newImage);
     }
 
     return ret;
 }
-
-
 
 Frame Canvas_GenerateFrame(Canvas * self)
 {
@@ -381,5 +427,3 @@ Frame Canvas_GenerateFrame(Canvas * self)
 
     return newFrame;
 }
-
-

@@ -4,9 +4,11 @@
 #include <inttypes.h>
 #include "main.h"
 
+// stałe wartości dla matrycy
+
 #define ADDRESSABLE_ROWS        16
 #define COLUMNS                 64
-#define PIXELS                  ADDRESSABLE_ROWS * COLUMNS
+#define ADDRESABLE_PIXELS                  ADDRESSABLE_ROWS * COLUMNS
 
 #define ROWS                    32
 
@@ -15,8 +17,5 @@
 
 // bits per each color
 #define BCM_BIT_DEPTH           4
-
-
-
 
 #endif /* _LED_MATRIX_CONST_H */

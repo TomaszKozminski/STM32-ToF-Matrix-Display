@@ -6,19 +6,25 @@
 #include "cmsis_os.h"
 #include "Frame.h"
 
-typedef struct{
-    SemaphoreHandle_t Mutex;
-    Frame FrameData;
-    Frame Buffer;
-}LedMatrix;
-
+/**
+ * @brief inicjalizuje instancje obiektu, gdy taki jeszcze nie istnieje
+ */
 int LedMatrix_Init();
 
-// @biref displays data saved in Frame utilizing DMA
-// for data transfer
+/**
+ * @brief niszczy obiekt
+ */
+int LedMatrix_DeInit();
+
+/**
+ * @brief wyświetla dane załadowanej klatki
+ * @note przed wyświetleniem sprawdza zawartość bufforu, jeżeli taka istnieje to jest ładowana do wyświtlenia
+ */
 void LedMatrix_DisplayFrame();
 
-
+/**
+ * @brief podmienia zawartość bufforu na nową klatkę
+ */
 void LedMatrix_ChangeFrame(Frame newFrame);
 
 

@@ -1,6 +1,10 @@
 #include "ImageBackground.h"
 #include "LedMatrixConst.h"
 
+
+// użyte wzorce:
+// - object pattern
+
 void ImageBackground_Init(ImageBackground * self, const uint8_t (*newBackgroundMask)[COLUMNS] , COLOR newColor)
 {
     if(self != NULL && newBackgroundMask != NULL){

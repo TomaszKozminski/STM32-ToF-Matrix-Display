@@ -3,7 +3,7 @@
 
 Frame Frame_Create(void)
 {
-    Frame newFrame = calloc(sizeof(uint32_t), PIXELS * BCM_BIT_DEPTH);
+    Frame newFrame = calloc(sizeof(uint32_t), ADDRESABLE_PIXELS * BCM_BIT_DEPTH);
     return newFrame;
 }
 
