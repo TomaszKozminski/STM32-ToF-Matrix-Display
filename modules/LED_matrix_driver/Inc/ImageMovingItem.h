@@ -57,20 +57,6 @@ typedef struct{
 void ImageMovingItem_Init(ImageMovingItem * self, const uint8_t (*newItemMask)[COLUMNS], MoveRange newMoveLimits, PositionDataRange newInputRange, COLOR newColor);
 
 /**
- * @brief zmienia maksymalne wychlenia
- * @param wskaźnik na obiekt
- * @param newMoveLimits maksymalne wychylenia
- */
-void ImageMovingItem_SetMoveLimits(ImageMovingItem * self, MoveRange newMoveLimits);
-
-/**
- * @brief zmienia maksymalne wychlenia
- * @param wskaźnik na obiekt
- * @param newInputRange zakresy danych wejściowych
- */
-void ImageMovingItem_SetPositionDataRange(ImageMovingItem * self, PositionDataRange newInputRange);
-
-/**
  * @brief zmienia wychylenie obiektu na podstawie danych wejściowych
  * @param self wskaźnik na obiekt
  * @param inputX dane wejściowe dla osi X

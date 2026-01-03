@@ -8,13 +8,14 @@
 
 /**
  * @brief inicjalizuje instancje obiektu, gdy taki jeszcze nie istnieje
+ * @returns 0 on success
  */
 int LedMatrix_Init();
 
 /**
  * @brief niszczy obiekt
  */
-int LedMatrix_DeInit();
+void LedMatrix_DeInit();
 
 /**
  * @brief wyświetla dane załadowanej klatki

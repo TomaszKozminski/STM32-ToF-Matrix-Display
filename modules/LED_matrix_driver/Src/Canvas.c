@@ -423,7 +423,7 @@ Frame Canvas_GenerateFrame(Canvas * self)
         }   
     }
 
-    xSemaphoreGive(self->Mutex);
+    xSemaphoreGive(self->Mutex); 
 
     return newFrame;
 }

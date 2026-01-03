@@ -21,19 +21,6 @@ void ImageMovingItem_Init(ImageMovingItem * self, const uint8_t (*newItemMask)[C
     }
 }
 
-void ImageMovingItem_SetMoveLimits(ImageMovingItem * self, MoveRange newMoveLimits){
-    if(self != NULL){
-        self->MoveLimts = newMoveLimits;
-    }
-}
-
-void ImageMovingItem_SetPositionDataRange(ImageMovingItem * self, PositionDataRange newInputRange)
-{
-    if(self != NULL){
-        self->InputRange = newInputRange;
-    }
-}
-
 void ImageMovingItem_SetPosition(ImageMovingItem * self, float inputX, float inputY)
 {
     if(self != NULL){

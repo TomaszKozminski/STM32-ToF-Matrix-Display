@@ -104,7 +104,7 @@ int LedMatrix_Init()
     return 0;
 }
 
-int LedMatrix_DeInit()
+void LedMatrix_DeInit()
 {
     if(_singleton.DisplayData != NULL){
         Frame_Delete(_singleton.DisplayData);
@@ -117,12 +117,11 @@ int LedMatrix_DeInit()
     if(_singleton.Mutex != NULL){
         vSemaphoreDelete(_singleton.Mutex);
     }
-    
-    return 0;
 }
 
 void LedMatrix_DisplayFrame()
 {
+    // load second buffer if isnt NULL
     LedMatrix_LoadBuffer();
 
     uint16_t used_pixels_1 = 0;
