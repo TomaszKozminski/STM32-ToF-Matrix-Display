@@ -163,7 +163,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 }
 
 // Funkcja rysująca "Radar" w terminalu ASCII
-void Debug_PrintMatrix(const TrackedObject *obj, const RangeSensorFrame *frame) {
+void Debug_PrintMatrix(const ObjectTracker *tracker, const RangeSensorFrame *frame) {
     // 1. Wyczyść ekran
     printf("\033[2J\033[H"); 
 
@@ -171,36 +171,37 @@ void Debug_PrintMatrix(const TrackedObject *obj, const RangeSensorFrame *frame) 
     printf("     0    1    2    3    4    5    6    7\r\n");
     printf("   ----------------------------------------\r\n");
 
-    // 2. Pętla rysująca siatkę 8x8
+    // 2. Pętla rysująca siatkę (bez zmian)
     for (int y = 0; y < 8; y++) {
-        printf("%d | ", y); // Numer wiersza
+        printf("%d | ", y);
         for (int x = 0; x < 8; x++) {
-            // Obliczamy indeks w tablicy liniowej (zakładamy układ wierszami)
-            // Czasami czujniki mają układ kolumnami - zobaczysz to machając ręką
             int idx = y * 8 + x; 
-            
             uint16_t dist = frame->distances_mm[idx];
             uint8_t stat = frame->statuses[idx];
 
-            // Status 5 i 9 to poprawne pomiary. 
-            // Jeśli inny -> wyświetl kreski, żeby nie zaciemniać obrazu zerami.
             if (stat == 5 || stat == 9) {
                 printf("%4d ", dist);
             } else {
                 printf("---- "); 
             }
         }
-        printf("|\r\n"); // Koniec wiersza
+        printf("|\r\n");
     }
     printf("   ----------------------------------------\r\n");
 
-    // 3. Wyniki Trackera (pod spodem)
+    // 3. Wyniki Trackera (TERAZ UŻYWAMY GETTERÓW POPRAWNIE)
     printf("\r\n=== WYNIKI ALGORYTMU ===\r\n");
-    printf("Status:      %s\r\n", obj->is_detected ? "[ OBIEKT WYKRYTY ]" : "[ Szukam... ]");
-    printf("Pozycja X:   %5.2f  (Srodek to 3.5)\r\n", obj->position_x);
-    printf("Pozycja Y:   %5.2f  (Srodek to 3.5)\r\n", obj->position_y);
-    printf("Odleglosc:   %5.0f mm\r\n", obj->distance_mm);
-    printf("Pewnosc:     %5.0f %%\r\n", obj->probability * 100.0f);
+    
+    // Używamy funkcji ObjectTracker_IsDetected zamiast grzebać w strukturze
+    bool detected = ObjectTracker_IsDetected(tracker);
+    
+    printf("Status:      %s\r\n", detected ? "[ OBIEKT WYKRYTY ]" : "[ Szukam... ]");
+    
+    // Jeśli nie wykryto, wartości mogą być śmieciowe/stare, ale wyświetlamy je
+    printf("Pozycja X:   %5.2f  (Srodek to 3.5)\r\n", ObjectTracker_GetX(tracker));
+    printf("Pozycja Y:   %5.2f  (Srodek to 3.5)\r\n", ObjectTracker_GetY(tracker));
+    printf("Odleglosc:   %5.0f mm\r\n", ObjectTracker_GetDistance(tracker));
+    printf("Pewnosc:     %5.0f %%\r\n", ObjectTracker_GetProbability(tracker) * 100.0f);
 }
 /* USER CODE END 0 */
 
@@ -861,7 +862,7 @@ void StartDefaultTask(void const * argument)
           }
           
           // set image accordingly to sensor read
-          ImageMovingItem_SetPosition(&mainItem, myTracker.target.position_x, myTracker.target.position_y);
+          ImageMovingItem_SetPosition(&mainItem, ObjectTracker_GetX(&myTracker), ObjectTracker_GetY(&myTracker));
           // put image on canvas
           Canvas_PutImage(&mainCanvas, &mainImage);
 

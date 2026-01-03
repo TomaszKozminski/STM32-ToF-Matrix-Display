@@ -59,6 +59,61 @@ typedef struct {
  */
 void ObjectTracker_Init(ObjectTracker *self, const ObjectTrackerConfig *config);
 
+/**
+ * @brief Główna funkcja algorytmu. Przetwarza nową klatkę danych z czujnika.
+ * Wykonuje analizę wagową (Center of Mass), decyduje o obecności obiektu
+ * i aktualizuje filtry wygładzające pozycję oraz odległość.
+ * * @param self Wskaźnik do instancji trackera.
+ * @param input_frame Wskaźnik do surowych danych pobranych z czujnika (RangeSensorFrame).
+ */
 void ObjectTracker_Process(ObjectTracker *self, const RangeSensorFrame *input_frame);
+
+/**
+ * @brief Sprawdza status detekcji obiektu.
+ * * @param self Wskaźnik do instancji trackera.
+ * @return true - jeśli obiekt został wykryty i spełnia kryteria (masa > próg).
+ * @return false - jeśli brak obiektu lub sygnał jest zbyt słaby (traktowany jako szum).
+ */
+bool  ObjectTracker_IsDetected(const ObjectTracker *self);
+
+/**
+ * @brief Pobiera aktualną, przefiltrowaną pozycję X obiektu (współrzędna pozioma).
+ * Wartość odnosi się do siatki czujnika (np. 0.0 - 7.0 dla sensora 8x8).
+ * * @param self Wskaźnik do instancji trackera.
+ * @return float Pozycja X (gdzie 3.5 to środek).
+ */
+float ObjectTracker_GetX(const ObjectTracker *self);
+
+/**
+ * @brief Pobiera aktualną, przefiltrowaną pozycję Y obiektu (współrzędna pionowa).
+ * Wartość odnosi się do siatki czujnika (np. 0.0 - 7.0 dla sensora 8x8).
+ * * @param self Wskaźnik do instancji trackera.
+ * @return float Pozycja Y (gdzie 3.5 to środek).
+ */
+float ObjectTracker_GetY(const ObjectTracker *self);
+
+/**
+ * @brief Pobiera aktualną odległość do środka ciężkości obiektu.
+ * Wartość jest wygładzona filtrem dolnoprzepustowym.
+ * * @param self Wskaźnik do instancji trackera.
+ * @return float Odległość w milimetrach [mm].
+ */
+float ObjectTracker_GetDistance(const ObjectTracker *self);
+
+/**
+ * @brief Oblicza kąt odchylenia obiektu od osi optycznej czujnika.
+ * Kąt jest wyliczany na podstawie pozycji X i pola widzenia (FOV) czujnika.
+ * * @param self Wskaźnik do instancji trackera.
+ * @return float Kąt w stopniach (ujemny w lewo, dodatni w prawo).
+ */
+float ObjectTracker_GetAngle(const ObjectTracker *self);
+
+/**
+ * @brief Zwraca poziom pewności (wiarygodności) detekcji.
+ * Jest to znormalizowana wartość określająca siłę sygnału odbitego od obiektu.
+ * * @param self Wskaźnik do instancji trackera.
+ * @return float Wartość od 0.0 (brak pewności) do 1.0 (pełna pewność).
+ */
+float ObjectTracker_GetProbability(const ObjectTracker *self);
 
 #endif // OBJECT_TRACKER_H

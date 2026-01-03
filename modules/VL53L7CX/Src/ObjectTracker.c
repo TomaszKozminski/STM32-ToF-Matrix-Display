@@ -10,6 +10,13 @@
 #define SENSOR_CENTER_X             3.5f  /* Środek między pikselem 3 a 4 (0..7) */
 #define SENSOR_RES_X                8.0f  /* Rozdzielczość pozioma */
 
+typedef struct {
+    float sum_weight;       // Całkowita "masa" obiektu
+    float sum_weight_x;     // Ważona suma X
+    float sum_weight_y;     // Ważona suma Y
+    float sum_weight_dist;  // Ważona suma odległości
+} AnalysisData;
+
 /* --- Funkcje Pomocnicze (Prywatne) --- */
 
 static float _calculate_pixel_weight(ObjectTracker *self, uint16_t dist_mm, uint8_t status) {
@@ -43,6 +50,68 @@ static float _low_pass_filter(float current, float target, float alpha) {
     return current * (1.0f - alpha) + target * alpha;
 }
 
+static AnalysisData _step1_analyze_frame(ObjectTracker *self, const RangeSensorFrame *frame) {
+    AnalysisData result = {0}; // Zerowanie
+
+    for (int i = 0; i < RS_TOTAL_ZONES; i++) {
+        int x = i % (int)SENSOR_RES_X;
+        int y = i / (int)SENSOR_RES_X;
+
+        uint16_t dist = frame->distances_mm[i];
+        uint8_t stat  = frame->statuses[i];
+
+        float w = _calculate_pixel_weight(self, dist, stat);
+
+        if (w > 0.001f) {
+            result.sum_weight      += w;
+            result.sum_weight_x    += w * (float)x;
+            result.sum_weight_y    += w * (float)y;
+            result.sum_weight_dist += w * (float)dist;
+        }
+    }
+    return result;
+}
+
+static bool _step2_check_detection(const ObjectTracker *self, float total_mass) {
+    return (total_mass >= self->config->min_mass_detect);
+}
+
+static void _step3_update_state(ObjectTracker *self, const AnalysisData *data, bool is_detected) {
+    
+    // 1. Oblicz surową pewność
+    float raw_prob = data->sum_weight / (self->config->min_mass_detect * 2.0f);
+    if (raw_prob > 1.0f) raw_prob = 1.0f;
+
+    // 2. Jeśli wykryto obiekt - aktualizuj pozycję
+    if (is_detected) {
+        float raw_x    = data->sum_weight_x / data->sum_weight;
+        float raw_y    = data->sum_weight_y / data->sum_weight;
+        float raw_dist = data->sum_weight_dist / data->sum_weight;
+
+        float alpha = self->config->smooth_factor;
+        
+        self->target.position_x  = _low_pass_filter(raw_x,    self->_prev_x,    alpha);
+        self->target.position_y  = _low_pass_filter(raw_y,    self->_prev_y,    alpha);
+        self->target.distance_mm = _low_pass_filter(raw_dist, self->_prev_dist, alpha);
+        
+        float deg_per_pixel = self->config->sensor_fov_deg / SENSOR_RES_X;
+        self->target.angle_deg = (self->target.position_x - SENSOR_CENTER_X) * deg_per_pixel;
+        
+        // Zapisz historię
+        self->_prev_x    = self->target.position_x;
+        self->_prev_y    = self->target.position_y;
+        self->_prev_dist = self->target.distance_mm;
+
+        self->target.is_detected = true;
+    } else {
+        self->target.is_detected = false;
+    }
+
+    // C. Filtrowanie prawdopodobieństwa (zawsze, nawet jak brak obiektu)
+    self->target.probability = _low_pass_filter(raw_prob, self->_prev_prob, 0.1f);
+    self->_prev_prob = self->target.probability;
+}
+
 /* --- Implementacja API --- */
 
 void ObjectTracker_Init(ObjectTracker *self, const ObjectTrackerConfig *config) {
@@ -62,66 +131,35 @@ void ObjectTracker_Init(ObjectTracker *self, const ObjectTrackerConfig *config) 
 void ObjectTracker_Process(ObjectTracker *self, const RangeSensorFrame *input_frame) {
     if (!input_frame->is_valid) return;
 
-    float sum_weight = 0.0f;
-    float sum_weight_x = 0.0f;
-    float sum_weight_y = 0.0f;
-    float sum_weight_dist = 0.0f;
+    AnalysisData analysis = _step1_analyze_frame(self, input_frame);
 
-    /* --- KROK 1: Analiza Obrazu --- */
-    for (int i = 0; i < RS_TOTAL_ZONES; i++) {
-        // Obliczamy X i Y z indeksu liniowego (zakładając układ wierszami)
-        int x = i % (int)SENSOR_RES_X;
-        int y = i / (int)SENSOR_RES_X;
+    bool detected = _step2_check_detection(self, analysis.sum_weight);
 
-        uint16_t dist = input_frame->distances_mm[i];
-        uint8_t stat  = input_frame->statuses[i];
+    _step3_update_state(self, &analysis, detected);
+}
 
-        float w = _calculate_pixel_weight(self, dist, stat);
+/* --- GETTY --- */
 
-        if (w > 0.001f) {
-            sum_weight      += w;
-            sum_weight_x    += w * (float)x;
-            sum_weight_y    += w * (float)y;
-            sum_weight_dist += w * (float)dist;
-        }
-    }
+bool ObjectTracker_IsDetected(const ObjectTracker *self) {
+    return self->target.is_detected;
+}
 
-    /* --- KROK 2: Logika Decyzyjna --- */
-    // Używamy progu z configu
-    float raw_prob = sum_weight / (self->config->min_mass_detect * 2.0f); 
-    if (raw_prob > 1.0f) raw_prob = 1.0f;
+float ObjectTracker_GetX(const ObjectTracker *self) {
+    return self->target.position_x;
+}
 
-    bool is_detected_now = (sum_weight >= self->config->min_mass_detect);
+float ObjectTracker_GetY(const ObjectTracker *self) {
+    return self->target.position_y;
+}
 
-    /* --- KROK 3: Aktualizacja Stanu --- */
-    if (is_detected_now) {
-        float raw_x    = sum_weight_x / sum_weight;
-        float raw_y    = sum_weight_y / sum_weight;
-        float raw_dist = sum_weight_dist / sum_weight;
+float ObjectTracker_GetDistance(const ObjectTracker *self) {
+    return self->target.distance_mm;
+}
 
-        // Filtrowanie (parametr alpha z configu)
-        float alpha = self->config->smooth_factor;
-        
-        self->target.position_x  = _low_pass_filter(raw_x,    self->_prev_x,    alpha);
-        self->target.position_y  = _low_pass_filter(raw_y,    self->_prev_y,    alpha);
-        self->target.distance_mm = _low_pass_filter(raw_dist, self->_prev_dist, alpha);
-        
-        // Kąt = (Odchylenie od środka w pikselach) * (Stopnie na piksel)
-        // Dla FOV 45 stopni i 8 pikseli: 1 piksel = 5.625 stopnia.
-        float deg_per_pixel = self->config->sensor_fov_deg / SENSOR_RES_X;
-        self->target.angle_deg = (self->target.position_x - SENSOR_CENTER_X) * deg_per_pixel;
-        
-        // Historia
-        self->_prev_x    = self->target.position_x;
-        self->_prev_y    = self->target.position_y;
-        self->_prev_dist = self->target.distance_mm;
+float ObjectTracker_GetAngle(const ObjectTracker *self) {
+    return self->target.angle_deg;
+}
 
-        self->target.is_detected = true;
-    } else {
-        self->target.is_detected = false;
-        // TODO: reset/ghosting
-    }
-
-    self->target.probability = _low_pass_filter(raw_prob, self->_prev_prob, 0.1f);
-    self->_prev_prob = self->target.probability;
+float ObjectTracker_GetProbability(const ObjectTracker *self) {
+    return self->target.probability;
 }
