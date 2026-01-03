@@ -256,7 +256,9 @@ int main(void)
   // enables clk pin compare output
   TIM8->BDTR |= TIM_BDTR_MOE;
 
-  LedMatrix_Init();
+  if(LedMatrix_Init()){
+    Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */

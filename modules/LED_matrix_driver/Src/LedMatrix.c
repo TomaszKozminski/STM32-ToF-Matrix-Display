@@ -17,7 +17,7 @@ typedef struct{
     SemaphoreHandle_t Mutex;
     // buffer na wyświetlane dane
     Frame DisplayData;
-    // drugi buffer przyjmujący nowe
+    // drugi buffer przyjmujący nowe dane
     Frame Buffer;
 }LedMatrix;
 
