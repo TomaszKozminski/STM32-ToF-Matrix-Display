@@ -23,7 +23,7 @@ void ImageMovingItem_Init(ImageMovingItem * self, const uint8_t (*newItemMask)[C
 
 void ImageMovingItem_SetPosition(ImageMovingItem * self, float inputX, float inputY)
 {
-    if(self != NULL){
+    if(self != NULL && inputX <= self->InputRange.maxX && inputY <= self->InputRange.maxY){
         self->OffsetX = (uint16_t)(((self->InputRange.maxX - self->InputRange.minX) - inputX)/self->ShiftUnitX);
         self->OffsetY = (uint16_t)(inputY/self->ShiftUnitY);
         if(self->OffsetX > self->MoveLimts.maxOffsetX){
