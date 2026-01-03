@@ -60,6 +60,13 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ./modules/VL53L7CX/Src/VL53L7CX_Adapter.c
     ./modules/VL53L7CX/Src/vl53l7cx_api.c
 
+    # SD Card driver
+    ./modules/SD_driver/Src/sd_spi.c
+    # Animation reader
+    ./modules/SD_driver/Src/sd_animation_reader.c
+    # Animation 2D mapper
+    ./modules/SD_driver/Src/animation_mapper.c
+
 
 )
 
@@ -67,6 +74,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ./modules/LED_matrix_driver/Inc
     ./modules/VL53L7CX/Inc
+    ./modules/SD_driver/Inc
 )
 
 # Add project symbols (macros)

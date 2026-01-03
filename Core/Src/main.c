@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -32,6 +33,13 @@
 #include "RangeSensor.h"        // Nasz interfejs
 #include "VL53L7CX_Adapter.h"   // Nasz adapter
 #include "ObjectTracker.h"
+
+//a
+#include <stdio.h>
+#include <string.h>
+#include "sd_spi.h"              // Driver SD przez SPI
+#include "sd_animation_reader.h" // Czytnik animacji
+#include "animation_mapper.h"    // Mapowanie stref/współrzędnych
 
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_hal_uart.h"
@@ -55,6 +63,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c2;
+
+SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
@@ -96,6 +106,7 @@ static void MX_TIM3_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_SPI2_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -160,6 +171,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         }
     }
   }
+}
+
+static inline uint32_t TrackerToZone(const ObjectTracker* t) {
+    return AnimationMapper_GetFrameIndex(ObjectTracker_GetX(t),
+                                         ObjectTracker_GetY(t));
 }
 
 // Funkcja rysująca "Radar" w terminalu ASCII
@@ -242,6 +258,8 @@ int main(void)
   MX_TIM8_Init();
   MX_I2C2_Init();
   MX_USART2_UART_Init();
+  MX_SPI2_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -405,6 +423,46 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
+  * @brief SPI2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI2_Init(void)
+{
+
+  /* USER CODE BEGIN SPI2_Init 0 */
+
+  /* USER CODE END SPI2_Init 0 */
+
+  /* USER CODE BEGIN SPI2_Init 1 */
+
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 7;
+  hspi2.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi2.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI2_Init 2 */
+
+  /* USER CODE END SPI2_Init 2 */
 
 }
 
@@ -712,7 +770,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(I2C_PWREN_GPIO_Port, I2C_PWREN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(I2C_LPN_GPIO_Port, I2C_LPN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, I2C_LPN_Pin|GPIO_PIN_12, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(I2C_RST_GPIO_Port, I2C_RST_Pin, GPIO_PIN_RESET);
@@ -754,6 +812,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(I2C_INT_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PB12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
@@ -786,7 +851,7 @@ void LoopTask(void const * argument)
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
-
+  
   // TOF sersor's variables
   RangeSensor mySensor; 
   ObjectTracker myTracker;
@@ -838,7 +903,10 @@ void StartDefaultTask(void const * argument)
   if (RangeSensor_Start(&mySensor) != RS_OK) {
     Error_Handler();
   }
-
+  //SD init
+  // SD init
+  SD_Status_t sd_status = SD_Init();
+  if (sd_status != SD_OK) { for(;;) osDelay(1000); }
   // Init Canvas and Image
   if(Canvas_Create(&mainCanvas)){
     Error_Handler();
@@ -846,6 +914,22 @@ void StartDefaultTask(void const * argument)
   ImageBackground_Init(&mainBG, BackgroundLibrary[imageIndex], WHITE);
   ImageMovingItem_Init(&mainItem, MovingItemLibrary[imageIndex], moveLimts, inputRange, RED);  
 
+  //FatFS mount
+  FRESULT fres = f_mount(&USERFatFS, USERPath, 1);
+  if (fres != FR_OK) { for(;;) osDelay(1000); }
+
+  // Animation Reader
+  SDAnimationReader_t reader;
+  SDAnimationReader_Create(&reader);
+  AnimationStatus_t st = AnimationReader_Init(&reader.base, "/TEST~1.ANI"); // 8.3 nazwa
+  if (st != ANIM_OK) { for(;;) osDelay(1000); }
+  uint32_t* frame_buf = pvPortMalloc(ANIMATION_FRAME_SIZE_BYTES);
+  if (!frame_buf) { for(;;) osDelay(1000); }
+
+  //open anim
+  SDAnimationReader_t reader;
+  SDAnimationReader_Create(&reader);
+  AnimationReader_Init(&reader.base, "/TEST~1.ANI");
   // task loop
   for(;;)
   {
@@ -863,15 +947,20 @@ void StartDefaultTask(void const * argument)
             ImageMovingItem_SetNewItemData(&mainItem, MovingItemLibrary[imageIndex % LIB_IMAGES_CNT]);
           }
           
+          
           // set image accordingly to sensor read
-          ImageMovingItem_SetPosition(&mainItem, ObjectTracker_GetX(&myTracker), ObjectTracker_GetY(&myTracker));
+          //ImageMovingItem_SetPosition(&mainItem, ObjectTracker_GetX(&myTracker), ObjectTracker_GetY(&myTracker));
+          uint32_t zone = TrackerToZone(&myTracker);
+          AnimationMapper_LoadFrameByZone(&reader.base, zone, frame_buf);
+          
+          
           // put image on canvas
-          Canvas_PutImage(&mainCanvas, &mainImage);
+          //Canvas_PutImage(&mainCanvas, &mainImage);
 
           // generate output frame
-          outputFrame = Canvas_GenerateFrame(&mainCanvas);          
+          //outputFrame = Canvas_GenerateFrame(&mainCanvas);          
           // send frame to display
-          LedMatrix_ChangeFrame(outputFrame);
+          LedMatrix_ChangeFrame(frame_buf);
       }
       else if (status == RS_ERROR_HW_FAILURE) {
           Error_Handler();
