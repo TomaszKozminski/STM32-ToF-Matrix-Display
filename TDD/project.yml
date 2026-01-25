@@ -146,6 +146,8 @@
   :plugins:                        # What plugins should be used by CMock?
     - :ignore
     - :callback
+    - :ignore_arg
+    - :return_thru_ptr
   :verbosity:  2                   # the options being 0 errors only, 1 warnings and errors, 2 normal info, 3 verbose
   :when_no_prototypes:  :warn      # the options being :ignore, :warn, or :erro
 
@@ -199,8 +201,8 @@
 
 # Configuration options specific to Unity. 
 :unity:
-  :defines:
-    - UNITY_EXCLUDE_FLOAT
+  :defines: []
+
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.

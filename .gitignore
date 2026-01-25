@@ -3,3 +3,12 @@ mx.scratch
 !.settings
 .vscode
 .settings
+
+*.txt
+*.tex
+*.out
+*.log
+*.fls
+*.fdb_latexmk
+*.aux
+*.pdf
