@@ -118,6 +118,9 @@ void Error_Handler(void);
 void delay_us(uint16_t us);
 void delay_ticks(uint32_t ticks);
 
+
+#define USE_SD  0
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

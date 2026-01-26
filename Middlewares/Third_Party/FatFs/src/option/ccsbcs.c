@@ -266,7 +266,7 @@ const WCHAR Tbl[] = {	/*  CP869(0x80-0xFF) to Unicode conversion table */
 
 
 #if !_TBLDEF || !_USE_LFN
-#error This file is not needed at current configuration. Remove from the project.
+// #error This file is not needed at current configuration. Remove from the project.
 #endif
 
 

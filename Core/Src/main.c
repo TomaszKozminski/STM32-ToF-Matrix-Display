@@ -890,10 +890,10 @@ void StartDefaultTask(void const * argument)
     .MovingItem = &mainItem
   };
 
-
+#if (USE_SD)
   // TOF init
   VL53L7CX_Adapter_Construct(&mySensor, &hi2c2, 0x52);
-  
+#endif
   if (RangeSensor_Init(&mySensor) != RS_OK){
     Error_Handler();
   }
@@ -903,10 +903,12 @@ void StartDefaultTask(void const * argument)
   if (RangeSensor_Start(&mySensor) != RS_OK) {
     Error_Handler();
   }
+#if (USE_SD)
   //SD init
   // SD init
   SD_Status_t sd_status = SD_Init();
   if (sd_status != SD_OK) { for(;;) osDelay(1000); }
+#endif
   // Init Canvas and Image
   if(Canvas_Create(&mainCanvas)){
     Error_Handler();
@@ -914,6 +916,7 @@ void StartDefaultTask(void const * argument)
   ImageBackground_Init(&mainBG, BackgroundLibrary[imageIndex], WHITE);
   ImageMovingItem_Init(&mainItem, MovingItemLibrary[imageIndex], moveLimts, inputRange, RED);  
 
+#if (USE_SD)
   //FatFS mount
   FRESULT fres = f_mount(&USERFatFS, USERPath, 1);
   if (fres != FR_OK) { for(;;) osDelay(1000); }
@@ -930,6 +933,7 @@ void StartDefaultTask(void const * argument)
   SDAnimationReader_t reader;
   SDAnimationReader_Create(&reader);
   AnimationReader_Init(&reader.base, "/TEST~1.ANI");
+#endif
   // task loop
   for(;;)
   {
@@ -947,20 +951,20 @@ void StartDefaultTask(void const * argument)
             ImageMovingItem_SetNewItemData(&mainItem, MovingItemLibrary[imageIndex % LIB_IMAGES_CNT]);
           }
           
-          
           // set image accordingly to sensor read
-          //ImageMovingItem_SetPosition(&mainItem, ObjectTracker_GetX(&myTracker), ObjectTracker_GetY(&myTracker));
+          ImageMovingItem_SetPosition(&mainItem, ObjectTracker_GetX(&myTracker), ObjectTracker_GetY(&myTracker));
+#if (USE_SD)
           uint32_t zone = TrackerToZone(&myTracker);
           AnimationMapper_LoadFrameByZone(&reader.base, zone, frame_buf);
-          
+#endif
           
           // put image on canvas
-          //Canvas_PutImage(&mainCanvas, &mainImage);
+          Canvas_PutImage(&mainCanvas, &mainImage);
 
           // generate output frame
-          //outputFrame = Canvas_GenerateFrame(&mainCanvas);          
+          outputFrame = Canvas_GenerateFrame(&mainCanvas);          
           // send frame to display
-          LedMatrix_ChangeFrame(frame_buf);
+          LedMatrix_ChangeFrame(outputFrame);
       }
       else if (status == RS_ERROR_HW_FAILURE) {
           Error_Handler();
