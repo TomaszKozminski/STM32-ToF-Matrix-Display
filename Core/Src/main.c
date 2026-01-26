@@ -277,6 +277,7 @@ int main(void)
   if(LedMatrix_Init()){
     Error_Handler();
   }
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */

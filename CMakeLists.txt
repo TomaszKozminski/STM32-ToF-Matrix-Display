@@ -67,7 +67,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Animation 2D mapper
     ./modules/SD_driver/Src/animation_mapper.c
 
-
+    ./modules/TimeMeasure/TimeMeasure.c
 )
 
 # Add include paths
@@ -75,6 +75,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ./modules/LED_matrix_driver/Inc
     ./modules/VL53L7CX/Inc
     ./modules/SD_driver/Inc
+    ./modules/TimeMeasure
 )
 
 # Add project symbols (macros)
